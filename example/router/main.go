@@ -1,37 +1,40 @@
 package main
 
 import (
-	"fmt"
-	"log"
-	"net/http"
-	"time"
+    "fmt"
+    "log"
+    "net/http"
+    "time"
 
-	"github.com/shkmv/httplib/router"
+    "github.com/shkmv/httplib/router"
+    "github.com/shkmv/httplib/router/ctxutil"
+    rmid "github.com/shkmv/httplib/router/middleware"
 )
 
 func main() {
 	r := router.New()
 
-	// Essential middlewares
-	r.Use(
-		router.RealIP(),
-		router.RequestID(),
-		router.Logger(nil),
-		router.Recoverer(nil),
-		router.NoCache(),
-		router.Timeout(5*time.Second, "request timeout"),
-	)
+    // Essential middlewares
+    r.Use(
+        rmid.RealIP(),
+        rmid.RequestID(),
+        rmid.Logger(nil),
+        rmid.Recoverer(nil),
+        rmid.NoCache(),
+        rmid.Timeout(5*time.Second, "request timeout"),
+        rmid.CORS(),
+    )
 
 	r.GetFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "pong")
 	})
 
 	r.Route("/api", func(api *router.Router) {
-		api.GetFunc("/users", func(w http.ResponseWriter, r *http.Request) {
-			ip := router.GetRealIP(r.Context())
-			reqID := router.GetReqID(r.Context())
-			fmt.Fprintf(w, "users list (ip=%s req_id=%s)", ip, reqID)
-		})
+        api.GetFunc("/users", func(w http.ResponseWriter, r *http.Request) {
+            ip := ctxutil.GetRealIP(r.Context())
+            reqID := ctxutil.GetReqID(r.Context())
+            fmt.Fprintf(w, "users list (ip=%s req_id=%s)", ip, reqID)
+        })
 
 		// Mount nested subrouter
 		admin := router.New()

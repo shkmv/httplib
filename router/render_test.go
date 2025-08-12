@@ -1,4 +1,4 @@
-package router
+package router_test
 
 import (
     "encoding/json"
@@ -6,12 +6,14 @@ import (
     "net/http/httptest"
     "strings"
     "testing"
+    "github.com/shkmv/httplib/router"
+    rmid "github.com/shkmv/httplib/router/middleware"
 )
 
 func TestRenderData_OK(t *testing.T) {
-    r := New()
+    r := router.New()
     r.GetFunc("/x", func(w http.ResponseWriter, req *http.Request) {
-        RenderOK(w, req, map[string]any{"hello": "world"})
+        router.RenderOK(w, req, map[string]any{"hello": "world"})
     })
 
     rr := httptest.NewRecorder()
@@ -34,10 +36,10 @@ func TestRenderData_OK(t *testing.T) {
 }
 
 func TestRenderError_WithReqID(t *testing.T) {
-    r := New()
-    r.Use(RequestID())
+    r := router.New()
+    r.Use(rmid.RequestID())
     r.GetFunc("/x", func(w http.ResponseWriter, req *http.Request) {
-        BadRequest(w, req, "bad_input", "invalid fields", map[string]any{"field": "name"})
+        router.BadRequest(w, req, "bad_input", "invalid fields", map[string]any{"field": "name"})
     })
 
     rr := httptest.NewRecorder()
@@ -45,7 +47,7 @@ func TestRenderError_WithReqID(t *testing.T) {
     if rr.Code != http.StatusBadRequest {
         t.Fatalf("status: %d", rr.Code)
     }
-    var got ErrorEnvelope
+    var got router.ErrorEnvelope
     if err := json.Unmarshal(rr.Body.Bytes(), &got); err != nil {
         t.Fatalf("json: %v", err)
     }
@@ -53,4 +55,3 @@ func TestRenderError_WithReqID(t *testing.T) {
         t.Fatalf("unexpected error envelope: %+v", got)
     }
 }
-

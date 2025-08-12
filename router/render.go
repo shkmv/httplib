@@ -1,8 +1,9 @@
 package router
 
 import (
-	"encoding/json"
-	"net/http"
+    "encoding/json"
+    "net/http"
+    "github.com/shkmv/httplib/router/ctxutil"
 )
 
 const contentTypeJSON = "application/json; charset=utf-8"
@@ -47,7 +48,7 @@ func RenderNoContent(w http.ResponseWriter, r *http.Request) {
 // code is a machine-readable error identifier; message is a human-friendly description.
 // details can be any additional payload (validation errors, fields, etc.).
 func RenderError(w http.ResponseWriter, r *http.Request, status int, code, message string, details any) {
-	rid := GetReqID(r.Context())
+	rid := ctxutil.GetReqID(r.Context())
 	if rid == "" {
 		rid = r.Header.Get("X-Request-ID")
 	}
