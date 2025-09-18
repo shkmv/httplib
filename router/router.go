@@ -56,26 +56,32 @@ func (r *Router) Route(prefix string, fn func(*Router)) {
 // Group is an alias for Route.
 func (r *Router) Group(prefix string, fn func(*Router)) { r.Route(prefix, fn) }
 
-// Mount mounts an http.Handler (another Router or any handler) under prefix.
-// Requests to exactly the prefix are rewritten to "/" for the mounted handler.
-// Requests to prefix subpaths are served with the prefix stripped.
+// Mount mounts an http.Handler (another Router or any handler) under a prefix.
+// If the prefix does not end in a slash, requests to the exact prefix are
+// rewritten to "/" for the mounted handler. For all other requests, the prefix
+// is stripped before being passed to the mounted handler.
 func (r *Router) Mount(prefix string, h http.Handler) {
     full := r.join(prefix)
 
-    // Exact match redirects path to "/" for the mounted handler.
-    r.mux.Handle(full, r.wrap(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-        // Clone to avoid mutating original request for other handlers.
-        req2 := req.Clone(req.Context())
-        req2.URL.Path = "/"
-        h.ServeHTTP(w, req2)
-    })))
+    // If the path doesn't have a trailing slash, add a handler for the
+    // exact path, rewriting it to "/". This is not needed if the path
+    // already has a trailing slash, as the subtree handler will catch it.
+    if !strings.HasSuffix(full, "/") {
+        r.mux.Handle(full, r.wrap(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+            req2 := req.Clone(req.Context())
+            req2.URL.Path = "/"
+            h.ServeHTTP(w, req2)
+        })))
+    }
 
-    // Subtree: strip the prefix to make the mounted handler the root.
+    // The subtree handler must have a trailing slash to match subpaths.
     subtree := full
     if !strings.HasSuffix(subtree, "/") {
         subtree += "/"
     }
-    r.mux.Handle(subtree, r.wrap(http.StripPrefix(strings.TrimRight(full, "/"), h)))
+    // The prefix for stripping should not have a trailing slash.
+    stripPrefix := strings.TrimRight(full, "/")
+    r.mux.Handle(subtree, r.wrap(http.StripPrefix(stripPrefix, h)))
 }
 
 // Handle registers a handler for any HTTP method at the full pattern.
