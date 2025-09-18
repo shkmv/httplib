@@ -116,3 +116,32 @@ func TestMiddlewareOrder(t *testing.T) {
         t.Fatalf("unexpected middleware order: got %q want %q", got, want)
     }
 }
+
+func TestMountWithTrailingSlash(t *testing.T) {
+    r := New()
+    sub := New()
+    sub.GetFunc("/", func(w http.ResponseWriter, req *http.Request) {
+        io.WriteString(w, "home")
+    })
+    sub.GetFunc("/dashboard", func(w http.ResponseWriter, req *http.Request) {
+        io.WriteString(w, "dash")
+    })
+
+    r.Mount("/admin/", sub)
+
+    // Exact mount path should reach sub at "/"
+    req := httptest.NewRequest(http.MethodGet, "/admin/", nil)
+    rr := httptest.NewRecorder()
+    r.ServeHTTP(rr, req)
+    if rr.Code != http.StatusOK || rr.Body.String() != "home" {
+        t.Fatalf("expected 200 home, got %d %q", rr.Code, rr.Body.String())
+    }
+
+    // Subpath should strip prefix
+    req2 := httptest.NewRequest(http.MethodGet, "/admin/dashboard", nil)
+    rr2 := httptest.NewRecorder()
+    r.ServeHTTP(rr2, req2)
+    if rr2.Code != http.StatusOK || rr2.Body.String() != "dash" {
+        t.Fatalf("expected 200 dash, got %d %q", rr2.Code, rr2.Body.String())
+    }
+}
